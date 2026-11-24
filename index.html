@@ -619,7 +619,7 @@ async function addFiles(files){console.log('Upload started');
   if (!list.length) return toast('Выберите аудиофайлы');
   toast('Загрузка…');
   for (const f of list) { const base = f.name.replace(/.[^.]+$/, ''); let artist = 'Неизвестный исполнитель', title = base; const m = base.split(/\s--\s/); if (m.length >= 2) { artist = m[0].trim(); title = m.slice(1).join(' - ').trim(); } const t = { id: uid(), title, artist, blob: f, cover: '', duration: await getDuration(f), added: Date.now(), owner: me.id }; await dbPut(t); tracks.push(t); } await fetch('http://localhost:3000', { method:
-  toast(`Добавлено треков: ${list.length}`);
+  toast(`Добавлено треков: ${list.length}`)
   render();
 }
 function chooseFiles(){ if (!canUpload()) return toast('Загрузка недоступна для вашего аккаунта'); const f = $('#fileAudio'); f.value = ''; f.onchange = () => addFiles(f.files); f.click(); }
