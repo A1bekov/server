@@ -618,7 +618,7 @@ async function addFiles(files){console.log('Upload started');
   const list = [...files].filter(f => f.type.startsWith('audio/') || /\.(mp3|m4a|wav|ogg|flac|aac|opus)$/i.test(f.name));
   if (!list.length) return toast('Выберите аудиофайлы');
   toast('Загрузка…');
-  for (const f of list){fetch('http://localhost:3000', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(t)})
+  for (const f of list) { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(t)})
     const base = f.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
     let artist = 'Неизвестный исполнитель', title = base;
     const m = base.split(/\s[-–—]\s/);
