@@ -1462,7 +1462,7 @@ function doRegister(){
 /* ВСТАВЬТЕ сюда адрес вашего сервера отправки, например 'https://server-5pq0.onrender.com'.
    Пока url пуст — работает ДЕМО (код показывается на сайте). Когда url указан, код на сайте НЕ показывается:
    он уходит только на почту / SMS. Отправитель задаётся на сервере (см. папку server). */
-const DELIVERY = { url: '', fromMail: 'karaokemusic2702@gmail.com', fromPhone: '+7 705 223 4837', brand: 'A1bekovMusic' };
+const DELIVERY = { url: 'http://localhost:3000', fromMail: 'karaokemusic2702@gmail.com', fromPhone: '+7 705 223 4837', brand: 'A1bekovMusic' };
 let rec = null;
 function deliverCode(ch, dest, code){
   if (DELIVERY.url){
