@@ -613,13 +613,20 @@ function menu(title, items){
 }
 
 /* ---------- upload ---------- */
-async function addFiles(files){console.log('Upload started');
+async function addFiles(files){
   if (!canUpload()) return toast('Загрузка доступна только Исполнителям, администраторам и Команде');
   const list = [...files].filter(f => f.type.startsWith('audio/') || /\.(mp3|m4a|wav|ogg|flac|aac|opus)$/i.test(f.name));
   if (!list.length) return toast('Выберите аудиофайлы');
   toast('Загрузка…');
-  for (const f of list) { const base = f.name.replace(/.[^.]+$/, ''); let artist = 'Неизвестный исполнитель', title = base; const m = base.split(/\s--\s/); if (m.length >= 2) { artist = m[0].trim(); title = m.slice(1).join(' - ').trim(); } const t = { id: uid(), title, artist, blob: f, cover: '', duration: await getDuration(f), added: Date.now(), owner: me.id }; await dbPut(t); tracks.push(t); } await fetch('http://localhost:3000', { method:
-  toast(`Добавлено треков: ${list.length}`)
+  for (const f of list){
+    const base = f.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+    let artist = 'Неизвестный исполнитель', title = base;
+    const m = base.split(/\s[-–—]\s/);
+    if (m.length >= 2){ artist = m[0].trim(); title = m.slice(1).join(' - ').trim(); }
+    const t = { id: uid(), title, artist, blob: f, cover: '', duration: await getDuration(f), added: Date.now(), owner: me.id };
+    await dbPut(t); tracks.push(t);
+  }
+  toast(`Добавлено треков: ${list.length}`);
   render();
 }
 function chooseFiles(){ if (!canUpload()) return toast('Загрузка недоступна для вашего аккаунта'); const f = $('#fileAudio'); f.value = ''; f.onchange = () => addFiles(f.files); f.click(); }
@@ -1192,7 +1199,7 @@ function kdf(secret,salt){
   return hex(h);
 }
 
-const LS_U = 'a1_users', LS_R = 'a1_requests', LS_S = 'a1_session', LS_F = 'a1_fail', LS_T = 'a1_tickets', LS_REM = 'a1_remember', LS_ACC = 'a1_accounts';
+const LS_U = 'a1_users', LS_R = 'a1_requests', LS_S = 'a1_session', LS_F = 'a1_fail', LS_T = 'a1_tickets', LS_REM = 'a1_remember';
 const ADMIN_ID = 'u_admin', POLICY_V = 1;
 const ROLE = { team: 'Команда', admin: 'Администратор', uploader: 'Исполнитель', user: 'Слушатель' };
 const SEED = {"salt": "64e41938fd366bd539fabc0aaa777695", "pw": "5d95ce2279d198db34abe7a77fb23771d4e5b2f4ab7d9b82bcca7ab40fdbb21e", "email": {"h": "24bd82c08236b6dea801c8ecb50fc897fd965afc3ad411f8a242bb897aec98eb", "mask": "••••••02@•••••"}, "phone": {"h": "f932e8a94f2f2bbf021b6bfdf46c5311c0332ed22b574c7bce59ab5332d500a1", "mask": "+7 ••• ••• ••37"}};
@@ -1279,40 +1286,17 @@ function setSession(id, persist){
   try { localStorage.removeItem(LS_S); sessionStorage.removeItem(LS_S); if (id) (persist ? localStorage : sessionStorage).setItem(LS_S, id); } catch (e) {}
 }
 const blockMsg = u => `Аккаунт заблокирован${u.blocked && u.blocked.reason ? ': ' + u.blocked.reason : ''}. Если это ошибка — напишите администрации.`;
-/* Запомненные аккаунты этого устройства: список {id, login, name, tok}.
-   Сам пароль нигде не хранится — только случайный токен устройства (в аккаунте лежит его хэш). */
-const th = t => hex(sha256(te.encode('tok:' + t)));
-const getAccs = () => { try { const a = JSON.parse(localStorage.getItem(LS_ACC) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } };
-const putAccs = a => { try { localStorage.setItem(LS_ACC, JSON.stringify(a)); } catch (e) {} };
-function rememberDevice(u, login){
-  const b = new Uint8Array(24); crypto.getRandomValues(b); const tok = hex(b);
-  u.rem = (u.rem || []).concat(th(tok)).slice(-5); saveUsers();
-  putAccs(getAccs().filter(a => a.id !== u.id).concat({ id: u.id, login: login || u.login, name: u.name, tok }));
-  localStorage.setItem(LS_REM, login || u.login);
-}
-function forgetDevice(id){
-  const a = getAccs(), x = a.find(v => v.id === id);
-  if (x){ const u = users.find(v => v.id === id); if (u && u.rem){ u.rem = u.rem.filter(h => h !== th(x.tok)); saveUsers(); } }
-  putAccs(a.filter(v => v.id !== id));
-  const rest = getAccs(); if (rest.length) localStorage.setItem(LS_REM, rest[rest.length - 1].login); else localStorage.removeItem(LS_REM);
-}
 function askRemember(u, pw, login){
   if (!me || me.id !== u.id) return;
-  if (getAccs().some(a => a.id === u.id)) return;
-  openSheet(`<h3>Запомнить аккаунт?</h3>
-    <p class="muted" style="font-size:14px;line-height:1.5">При следующем заходе на этом устройстве вы увидите свой аккаунт на экране входа и войдёте одним нажатием, без ввода пароля. Решаете вы: без вашего подтверждения ничего не сохраняется. Пароль мы не храним.</p>
+  openSheet(`<h3>Запомнить пароль?</h3>
+    <p class="muted" style="font-size:14px;line-height:1.5">Запомнить пароль для следующего входа на этом устройстве? Решаете вы: без вашего подтверждения ничего не сохраняется. Если откажетесь, при закрытии браузера вы выйдете из аккаунта.</p>
     <div class="row-btns"><button class="btn ghost" id="remNo">Не сейчас</button><button class="btn" id="remYes">${ic('check')} Запомнить</button></div>`);
-  $('#remNo').onclick = () => { closeSheet(); toast('Хорошо, аккаунт не запоминаем'); };
+  $('#remNo').onclick = () => { closeSheet(); localStorage.removeItem(LS_REM); toast('Хорошо, пароль не запоминаем'); };
   $('#remYes').onclick = async () => {
-    closeSheet(); setSession(u.id, true); rememberDevice(u, login);
+    closeSheet(); setSession(u.id, true); localStorage.setItem(LS_REM, login);
     try { if (window.PasswordCredential && navigator.credentials) await navigator.credentials.store(new PasswordCredential({ id: login, password: pw, name: u.name })); } catch (e) {}
-    toast('Аккаунт запомнен — в следующий раз войдёте одним нажатием');
+    toast('Пароль запомнен для следующего входа');
   };
-}
-function loginRemembered(id){
-  const x = getAccs().find(a => a.id === id), u = users.find(v => v.id === id);
-  if (!x || !u || !(u.rem || []).includes(th(x.tok))){ forgetDevice(id); renderAuth('login'); showErr('Сессия устарела — введите пароль'); return; }
-  enterApp(u, { persist: true });
 }
 
 /* ---------- вход / выход ---------- */
@@ -1386,10 +1370,8 @@ function renderAuth(tab = 'login'){
   const showpw = `<label class="chk" style="margin:4px 0"><input type="checkbox" id="showPw"><span>Показать пароль</span></label>`;
   if (tab === 'rec'){ rec = null; return renderRec1(); }
   if (tab === 'login'){
-    const accs = getAccs().filter(a => users.some(u => u.id === a.id));
-    const rem = (accs.length ? accs[accs.length - 1].login : '') || localStorage.getItem(LS_REM) || '';
-    const cards = accs.length ? `<div class="muted" style="font-size:13px;margin:4px 0 8px">Ваши аккаунты на этом устройстве</div>` + accs.map(a => { const u = users.find(v => v.id === a.id); return `<div class="remcard" data-id="${esc(a.id)}" style="display:flex;align-items:center;gap:12px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--line,#ffffff30);border-radius:12px;cursor:pointer">${avHtml(u)}<div style="flex:1;min-width:0"><b>${esc(u.name)}</b><div class="muted" style="font-size:12px">Продолжить как @${esc(u.login)}</div></div><button type="button" class="lnk" data-forget="${esc(a.id)}" title="Забыть на этом устройстве" style="text-decoration:none;font-size:20px;padding:4px 8px">×</button></div>`; }).join('') + `<div class="muted" style="text-align:center;font-size:12px;margin:10px 0">или войдите с паролем</div>` : '';
-    box.innerHTML = head + tabs + cards + `<form id="fAuth" autocomplete="on">
+    const rem = localStorage.getItem(LS_REM) || '';
+    box.innerHTML = head + tabs + `<form id="fAuth" autocomplete="on">
       <div class="field"><label>Логин</label><input id="aLogin" name="username" autocomplete="username" maxlength="24" value="${esc(rem)}"></div>
       <div class="field"><label>Пароль</label><input id="aPw" name="password" type="password" autocomplete="current-password"></div>${showpw}
       <div class="err" id="aErr"></div>
@@ -1397,9 +1379,7 @@ function renderAuth(tab = 'login'){
       <p style="text-align:center;margin-top:14px;font-size:13px"><button type="button" class="lnk" id="toRec">Забыли пароль?</button></p></form>`;
     $('#fAuth').onsubmit = e => { e.preventDefault(); busy($('#aGo'), doLogin); };
     $('#toRec').onclick = () => renderAuth('rec');
-    box.querySelectorAll('.remcard').forEach(c => c.onclick = e => { if (e.target.closest('[data-forget]')) return; loginRemembered(c.dataset.id); });
-    box.querySelectorAll('[data-forget]').forEach(b => b.onclick = e => { e.stopPropagation(); forgetDevice(b.dataset.forget); renderAuth('login'); });
-    if (rem && !accs.length && window.PasswordCredential && navigator.credentials)
+    if (rem && window.PasswordCredential && navigator.credentials)
       navigator.credentials.get({ password: true, mediation: 'optional' }).then(c => { if (c && c.id && $('#aLogin')){ $('#aLogin').value = c.id; $('#aPw').value = c.password || ''; } }).catch(() => {});
   } else {
     box.innerHTML = head + tabs + `<form id="fAuth" autocomplete="off">
@@ -1452,16 +1432,12 @@ function doRegister(){
    Чтобы подключить реальную отправку, укажите адрес вашего сервера в DELIVERY.url — туда уйдёт
    POST {channel:'mail'|'sms', to:'адрес или номер', code:'123456'}, а сервер отправит письмо/SMS.
    Пока адрес пуст, работает ДЕМО: код показывается во всплывающем окне, похожем на уведомление Gmail/SMS. */
-/* ВСТАВЬТЕ сюда адрес вашего сервера отправки, например 'https://server-5pq0.onrender.com'.
-   Пока url пуст — работает ДЕМО (код показывается на сайте). Когда url указан, код на сайте НЕ показывается:
-   он уходит только на почту / SMS. Отправитель задаётся на сервере (см. папку server). */
-const DELIVERY = { url: 'http://localhost:3000', fromMail: 'karaokemusic2702@gmail.com', fromPhone: '+7 705 223 4837', brand: 'A1bekovMusic' };
+const DELIVERY = { url: '' };
 let rec = null;
 function deliverCode(ch, dest, code){
   if (DELIVERY.url){
     fetch(DELIVERY.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel: ch, to: dest, code }) })
-      .then(r => { if (!r.ok) throw new Error(r.status); })
-      .catch(() => toast('Не удалось отправить код. Попробуйте позже'));
+      .catch(() => toast('Не удалось отправить код'));
     return;
   }
   const old = $('#notif'); if (old) old.remove();
@@ -1558,7 +1534,7 @@ function renderRec3(){
     if (!rec || !rec.ok || !u || rec.need.some(c => !rec.done.includes(c))) return showErr('Сессия восстановления устарела. Начните заново.');
     if (pw.length < 8) return showErr('Новый пароль должен быть не короче 8 символов');
     if (pw !== pw2) return showErr('Пароли не совпадают');
-    u.pw = kdf(pw, u.salt); u.rem = []; putAccs(getAccs().filter(a => a.id !== u.id)); saveUsers(); failClear(rec.key); rec = null;
+    u.pw = kdf(pw, u.salt); saveUsers(); failClear(rec.key); rec = null;
     renderAuth('login'); showErr('Пароль изменён. Теперь войдите с новым паролем.', true);
   }); };
 }
@@ -1679,7 +1655,7 @@ function editPw(){
     if (!checkPw(me, $('#pOld').value)) return err('Неверный текущий пароль');
     if ($('#pNew').value.length < 8) return err('Новый пароль — минимум 8 символов');
     if ($('#pNew').value !== $('#pNew2').value) return err('Пароли не совпадают');
-    me.pw = kdf($('#pNew').value, me.salt); me.rem = []; putAccs(getAccs().filter(a => a.id !== me.id)); saveUsers(); closeSheet(); toast('Пароль изменён');
+    me.pw = kdf($('#pNew').value, me.salt); saveUsers(); closeSheet(); toast('Пароль изменён');
   });
 }
 
