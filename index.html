@@ -619,7 +619,7 @@ async function addFiles(files){console.log('Upload started');
   if (!list.length) return toast('Выберите аудиофайлы');
   toast('Загрузка…');
   for (const f of list) 
-    const base = f.name.replace(/\.[^.]+$/, '').replace(/_/g, ' ');
+    for (const f of list) {
     let artist = 'Неизвестный исполнитель', title = base;
     
     if (m.length >= 2){ artist = m[0].trim(); title = m.slice(1).join(' - ').trim(); }
